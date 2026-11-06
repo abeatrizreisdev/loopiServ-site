@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LoopiServ — O ciclo completo do seu serviço em um único sistema</title>
+  <meta name="description" content="Orçamento com aprovação por link, agenda da equipe, área de campo, comprovante e pós-venda pelo WhatsApp: o ciclo completo da empresa de serviço em um único sistema.">
+  <meta name="theme-color" content="#1F2933">
+  <meta property="og:title" content="LoopiServ — O ciclo completo do seu serviço em um único sistema">
+  <meta property="og:description" content="Do orçamento ao pós-venda em um único sistema, com o cliente voltando na hora certa pelo WhatsApp.">
+  <meta property="og:type" content="website">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap">
+  <style>
+    :root {
+      --grafite: #1F2933;
+      --grafite-2: #323F4B;
+      --texto-2: #52606D;
+      --laranja: #E0761B;
+      --laranja-escuro: #B4530F;
+      --laranja-claro: #FFF1E4;
+      --nevoa: #F3F5F7;
+      --linha: #DDE2E7;
+      --branco: #FFFFFF;
+      --verde: #16A34A;
+      --bolha: #E7F6E0;
+      --largura: 1160px;
+      /* Tamanho da logo grande da abertura (usado pelo lugar dela e pela logo que voa) */
+      --lg-simbolo: clamp(96px, 14vw, 168px);
+      --lg-nome: clamp(64px, 10.5vw, 128px);
+    }
+    @media (max-width: 760px) { :root { --lg-simbolo: 96px; --lg-nome: 64px; } }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+    body {
+      margin: 0; background: var(--branco); color: var(--grafite);
+      font-family: 'Outfit', system-ui, -apple-system, 'Segoe UI', sans-serif;
+      font-size: 18px; line-height: 1.6; -webkit-font-smoothing: antialiased;
+    }
+    img { max-width: 100%; display: block; }
+    a { color: var(--laranja-escuro); }
+    a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible {
+      outline: 3px solid var(--laranja); outline-offset: 3px; border-radius: 6px;
+    }
+    .faixa { max-width: var(--largura); margin: 0 auto; padding: 0 24px; }
+    h1, h2, h3 { line-height: 1.1; margin: 0; letter-spacing: -0.02em; }
+    h2 { font-size: clamp(2rem, 4vw, 3rem); font-weight: 800; max-width: 18ch; }
+    .lead { font-size: 1.2rem; color: var(--texto-2); max-width: 56ch; margin: 18px 0 0; }
+    .pular { position: absolute; left: -999px; top: 8px; background: var(--grafite); color: #fff; padding: 10px 14px; border-radius: 8px; z-index: 50; }
+    .pular:focus { left: 8px; }
+
+    /* Botões */
+    .botao {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      min-height: 52px; padding: 0 24px; border-radius: 14px; border: 2px solid transparent;
+      font: inherit; font-weight: 700; font-size: 1.02rem; text-decoration: none; cursor: pointer;
+      transition: background-color .15s ease, border-color .15s ease;
+    }
+    .botao-principal { background: var(--laranja-escuro); color: #fff; }
+    .botao-principal:hover { background: #8A3F0B; }
+    .botao-linha { background: transparent; color: var(--grafite); border-color: var(--linha); }
+    .botao-linha:hover { border-color: var(--grafite); }
+
+    /* Nome da marca escrito: "Loopi" grafite e "Serv" laranja */
+    .nome-marca { font-weight: 800; letter-spacing: -0.035em; line-height: 1; color: var(--grafite); white-space: nowrap; }
+    .nome-marca span { color: var(--laranja); }
+
+    /* Topo: começa transparente e sem logo; ganha fundo quando a logo chega ao canto */
+    .topo { position: sticky; top: 0; z-index: 20; background: transparent; border-bottom: 1px solid transparent; transition: background-color .3s ease, border-color .3s ease; }
+    .topo.pronto { background: rgba(255,255,255,.9); -webkit-backdrop-filter: saturate(1.4) blur(10px); backdrop-filter: saturate(1.4) blur(10px); border-bottom-color: var(--linha); }
+    .topo .faixa { display: flex; align-items: center; gap: 28px; min-height: 72px; }
+    .topo-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .tl-simbolo { width: 40px; height: 40px; }
+    .tl-nome { font-size: 26px; }
+    .voo .topo-logo > * { opacity: 0; } /* a logo que voa ocupa este lugar */
+    .topo nav { display: flex; gap: 24px; margin-left: auto; }
+    .topo .espaco { display: none; }
+    .topo nav a { color: var(--grafite); text-decoration: none; font-weight: 500; }
+    .topo nav a:hover { color: var(--laranja-escuro); }
+    .topo .botao { min-height: 44px; padding: 0 18px; }
+    @media (max-width: 860px) { .topo nav { display: none; } .topo .espaco { display: block; flex: 1; } .topo .faixa { gap: 16px; } }
+
+    /* Abertura: logo grande, slogan e convite para rolar */
+    .intro { min-height: calc(100vh - 72px); min-height: calc(100svh - 72px); display: flex; align-items: center; text-align: center; padding: 24px 0 40px; }
+    .intro .faixa { display: flex; flex-direction: column; align-items: center; width: 100%; }
+    .logo-grande { display: flex; align-items: center; gap: 24px; margin-bottom: 32px; }
+    .lg-simbolo { width: var(--lg-simbolo); height: var(--lg-simbolo); }
+    .lg-nome { font-size: var(--lg-nome); }
+    .voo .logo-grande { visibility: hidden; }
+    .sem-movimento .logo-grande { display: none; }
+    .sem-movimento .intro { min-height: 0; padding: 96px 0 72px; }
+    .intro h1 { font-size: clamp(1.9rem, 4.2vw, 3.4rem); font-weight: 800; letter-spacing: -0.03em; max-width: 20ch; }
+    .intro .lead { margin-left: auto; margin-right: auto; }
+    .abertura-acoes { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 32px; }
+    .rolar { margin-top: 40px; display: inline-flex; flex-direction: column; align-items: center; gap: 6px; color: var(--texto-2); font-weight: 600; font-size: .95rem; text-decoration: none; }
+    .rolar svg { width: 22px; height: 22px; animation: desce 1.8s ease-in-out infinite; }
+    @keyframes desce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(6px); } }
+    @media (prefers-reduced-motion: reduce) { .rolar svg { animation: none; } }
+    @media (max-width: 760px) { .logo-grande { flex-direction: column; gap: 14px; margin-bottom: 24px; } }
+
+    /* A logo que viaja do centro da abertura até o canto do topo */
+    .logo-voo { display: none; position: fixed; top: 0; left: 0; z-index: 30; pointer-events: none; }
+    .voo .logo-voo { display: block; }
+    .logo-voo > * { position: absolute; top: 0; left: 0; transform-origin: 0 0; will-change: transform; }
+    .lv-simbolo { width: var(--lg-simbolo); height: var(--lg-simbolo); max-width: none; }
+    .lv-nome { font-size: var(--lg-nome); }
+
+    /* Texto e Ciclo A */
+    .abertura { padding: 72px 0 96px; }
+    .abertura .faixa { display: grid; grid-template-columns: 1fr 1.15fr; gap: 48px; align-items: center; }
+    .abertura-nota { margin-top: 18px; color: var(--texto-2); font-size: .95rem; }
+    @media (max-width: 920px) { .abertura .faixa { grid-template-columns: 1fr; gap: 32px; } }
+
+    /* Ciclo A: medidas em cqw para o desenho inteiro escalar junto (base: 880 unidades = 100cqw) */
+    .ciclo { container-type: inline-size; position: relative; width: 100%; max-width: 640px; margin: 0 auto; aspect-ratio: 880 / 640; }
+    .ciclo svg.anel { position: absolute; inset: 0; width: 100%; height: 100%; }
+    .ciclo .tracejado { fill: none; stroke: var(--linha); stroke-width: 2; stroke-dasharray: 6 9; }
+    .ciclo .fundo { fill: #FFF8F1; }
+    .ciclo .trilho { fill: none; stroke: #FFE3CC; stroke-width: 14; }
+    .ciclo .progresso { fill: none; stroke: var(--laranja); stroke-width: 14; stroke-linecap: round; transition: stroke-dashoffset .9s ease; }
+    .etapa { position: absolute; width: 8.64cqw; height: 8.64cqw; margin: -4.32cqw 0 0 -4.32cqw; }
+    .etapa .bola {
+      width: 100%; height: 100%; border-radius: 50%; display: grid; place-items: center;
+      background: #fff; border: 2px solid var(--linha); color: var(--texto-2);
+      transition: background-color .5s ease, border-color .5s ease, color .5s ease, transform .5s ease, box-shadow .5s ease;
+    }
+    .etapa svg { width: 3.6cqw; height: 3.6cqw; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .etapa.feita .bola { background: var(--laranja-claro); border-color: var(--laranja); color: var(--laranja); }
+    .etapa.atual .bola { background: var(--laranja); border-color: var(--laranja); color: #fff; transform: scale(1.18); box-shadow: 0 0 0 min(12px, 1.4cqw) rgba(224,118,27,.18); }
+    .rotulo { position: absolute; white-space: nowrap; line-height: 1.2; }
+    .rotulo strong { display: block; font-size: 2.9cqw; font-weight: 700; color: var(--grafite); transition: color .5s ease; }
+    .rotulo span { display: block; font-size: 2.3cqw; color: var(--texto-2); }
+    .etapa.atual .rotulo strong { color: var(--laranja-escuro); }
+    .rotulo.cima { bottom: 100%; left: 50%; transform: translateX(-50%); margin-bottom: 2.2cqw; text-align: center; }
+    .rotulo.baixo { top: 100%; left: 50%; transform: translateX(-50%); margin-top: 2.2cqw; text-align: center; }
+    .rotulo.dir { left: 100%; top: 50%; transform: translateY(-50%); margin-left: 2.2cqw; }
+    .rotulo.esq { right: 100%; top: 50%; transform: translateY(-50%); margin-right: 2.2cqw; text-align: right; }
+    .ciclo-centro { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); text-align: center; }
+    .ciclo-centro img { width: 7.27cqw; height: 7.27cqw; margin: 0 auto 1.2cqw; }
+    .ciclo-centro strong { display: block; font-size: 3.4cqw; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; white-space: nowrap; }
+    .ciclo-centro span { display: block; font-size: 2.3cqw; color: var(--texto-2); margin-top: .6cqw; }
+
+    /* Seções */
+    section { scroll-margin-top: 80px; }
+    .secao { padding: 96px 0; }
+    .secao-nevoa { background: var(--nevoa); }
+    .secao-escura { background: var(--grafite); color: #fff; }
+    .secao-escura .lead { color: #CBD2D9; }
+
+    /* Como funciona: as seis paradas em ordem */
+    .passos { list-style: none; margin: 56px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 48px 40px; counter-reset: passo; }
+    .passos li { counter-increment: passo; border-top: 3px solid var(--grafite); padding-top: 20px; }
+    .passos li::before { content: counter(passo); display: block; font-size: 2.6rem; font-weight: 800; color: var(--laranja-escuro); line-height: 1; margin-bottom: 14px; }
+    .passos li:last-child { border-top-color: var(--laranja); }
+    .passos h3 { font-size: 1.3rem; font-weight: 700; }
+    .passos p { margin: 8px 0 0; color: var(--texto-2); }
+    .passos .quem { display: inline-block; margin-top: 12px; font-size: .9rem; font-weight: 600; color: var(--grafite-2); background: #fff; border: 1px solid var(--linha); border-radius: 999px; padding: 2px 12px; }
+    @media (max-width: 900px) { .passos { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 600px) { .passos { grid-template-columns: 1fr; gap: 36px; } }
+
+    /* Veja o LoopiServ por dentro */
+    .telas { display: grid; grid-template-columns: 1fr 1fr; gap: 48px 32px; margin-top: 48px; }
+    .telas figure, .celulares figure { margin: 0; }
+    .telas figcaption, .celulares figcaption { margin-top: 14px; color: var(--texto-2); font-size: .98rem; }
+    .telas figcaption strong, .celulares figcaption strong { color: var(--grafite); }
+    .navegador { border: 1px solid var(--linha); border-radius: 14px; overflow: hidden; background: #fff; box-shadow: 0 24px 48px -28px rgba(31,41,51,.4); }
+    .navegador-barra { display: flex; align-items: center; gap: 6px; padding: 10px 14px; background: var(--nevoa); border-bottom: 1px solid var(--linha); }
+    .navegador-barra i { width: 10px; height: 10px; border-radius: 50%; background: var(--linha); }
+    .navegador-barra span { margin-left: 10px; flex: 1; max-width: 260px; background: #fff; border: 1px solid var(--linha); border-radius: 999px; font-size: .78rem; color: var(--texto-2); padding: 1px 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .navegador img, .celular img { width: 100%; height: auto; }
+    .celulares { display: flex; flex-wrap: wrap; justify-content: center; gap: 48px; margin-top: 64px; }
+    .celulares figure { width: min(300px, 100%); }
+    .celular { border: 10px solid var(--grafite); border-radius: 36px; overflow: hidden; background: #fff; box-shadow: 0 24px 48px -28px rgba(31,41,51,.5); }
+    @media (max-width: 760px) { .telas { grid-template-columns: 1fr; gap: 40px; } }
+
+    /* Conversa no WhatsApp ao longo do tempo */
+    .conversa-grade { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; }
+    .conversa { background: #ECE5DD; border-radius: 28px; padding: 22px 18px 26px; max-width: 420px; margin-left: auto; border: 10px solid var(--grafite); }
+    .conversa-cab { display: flex; align-items: center; gap: 10px; color: var(--grafite); padding: 0 6px 14px; border-bottom: 1px solid rgba(31,41,51,.12); margin-bottom: 8px; }
+    .conversa-cab img { width: 36px; height: 36px; border-radius: 10px; }
+    .conversa-cab strong { display: block; line-height: 1.2; }
+    .conversa-cab small { color: var(--texto-2); font-size: .82rem; }
+    .quando { text-align: center; margin: 16px 0 10px; }
+    .quando span { display: inline-block; background: #fff; color: var(--texto-2); font-size: .8rem; font-weight: 600; padding: 3px 12px; border-radius: 8px; }
+    .bolha { max-width: 86%; padding: 10px 14px 8px; border-radius: 14px; font-size: .96rem; line-height: 1.45; margin: 6px 0; box-shadow: 0 1px 0 rgba(0,0,0,.08); }
+    .bolha-empresa { background: var(--bolha); border-top-right-radius: 4px; margin-left: auto; }
+    .bolha-cliente { background: #fff; border-top-left-radius: 4px; }
+    .bolha .link { display: block; color: #0B6E99; text-decoration: underline; word-break: break-all; }
+    .conversa-legenda { list-style: none; padding: 0; margin: 32px 0 0; display: grid; gap: 18px; }
+    .conversa-legenda li { display: grid; grid-template-columns: 112px 1fr; gap: 16px; align-items: baseline; }
+    .conversa-legenda strong { font-weight: 700; color: var(--laranja-escuro); }
+    .conversa-legenda span { color: var(--texto-2); }
+    @media (max-width: 900px) {
+      .conversa-grade { grid-template-columns: 1fr; gap: 40px; }
+      .conversa { margin: 0 auto; }
+    }
+    @media (max-width: 480px) { .conversa-legenda li { grid-template-columns: 1fr; gap: 2px; } }
+
+    /* Duas áreas */
+    .lados { display: grid; grid-template-columns: 1fr 1fr; margin-top: 48px; border: 1px solid rgba(255,255,255,.16); border-radius: 24px; overflow: hidden; }
+    .lado { padding: 36px; }
+    .lado + .lado { border-left: 1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.04); }
+    .lado h3 { font-size: 1.6rem; font-weight: 700; }
+    .lado .para { color: #F7B57A; font-weight: 600; margin: 6px 0 18px; }
+    .lado ul { margin: 0; padding-left: 20px; color: #E4E7EB; }
+    .lado li + li { margin-top: 8px; }
+    @media (max-width: 760px) {
+      .lados { grid-template-columns: 1fr; }
+      .lado + .lado { border-left: 0; border-top: 1px solid rgba(255,255,255,.16); }
+      .lado { padding: 28px 22px; }
+    }
+
+    /* Para quem */
+    .segmentos { list-style: none; padding: 0; margin: 40px 0 0; display: grid; grid-template-columns: 1fr 1fr; column-gap: 56px; }
+    .segmentos li { padding: 14px 0; border-bottom: 1px solid var(--linha); display: flex; justify-content: space-between; gap: 16px; }
+    .segmentos li span { color: var(--texto-2); text-align: right; font-size: .95rem; }
+    .segmentos-nota { margin: 32px 0 0; color: var(--texto-2); max-width: 64ch; }
+    @media (max-width: 760px) { .segmentos { grid-template-columns: 1fr; } .segmentos li { flex-direction: column; gap: 2px; } .segmentos li span { text-align: left; } }
+
+    /* Quem faz */
+    .pessoas { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 40px; }
+    .pessoa { display: flex; gap: 20px; align-items: flex-start; background: #fff; border: 1px solid var(--linha); border-radius: 20px; padding: 28px; }
+    .avatar { flex: none; width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; background: var(--laranja-claro); color: var(--laranja-escuro); font-weight: 800; font-size: 1.25rem; }
+    .pessoa h3 { font-size: 1.25rem; font-weight: 700; }
+    .pessoa .papel { margin: 4px 0 0; font-weight: 600; color: var(--laranja-escuro); }
+    .pessoa p { margin: 8px 0 0; color: var(--texto-2); }
+    .origem { margin: 32px 0 0; max-width: 72ch; color: var(--texto-2); }
+    @media (max-width: 760px) { .pessoas { grid-template-columns: 1fr; } .pessoa { padding: 22px; } }
+
+    /* Perguntas */
+    .perguntas { margin-top: 40px; max-width: 820px; }
+    .perguntas details { border-bottom: 1px solid var(--linha); }
+    .perguntas summary { cursor: pointer; list-style: none; padding: 22px 40px 22px 0; font-size: 1.15rem; font-weight: 600; position: relative; }
+    .perguntas summary::-webkit-details-marker { display: none; }
+    .perguntas summary::after { content: ""; position: absolute; right: 8px; top: 50%; width: 12px; height: 12px; border-right: 2.5px solid var(--grafite); border-bottom: 2.5px solid var(--grafite); transform: translateY(-70%) rotate(45deg); transition: transform .2s ease; }
+    .perguntas details[open] summary::after { transform: translateY(-30%) rotate(-135deg); }
+    .perguntas details p { margin: 0 0 22px; color: var(--texto-2); max-width: 68ch; }
+
+    /* Interesse */
+    .interesse .faixa { display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: start; }
+    .form { background: #fff; color: var(--grafite); border-radius: 24px; padding: 32px; display: grid; gap: 16px; }
+    .form label { font-weight: 600; font-size: .95rem; display: grid; gap: 6px; }
+    .form input, .form select { font: inherit; font-size: 16px; min-height: 50px; padding: 0 14px; border-radius: 12px; border: 1.5px solid var(--linha); background: #fff; color: var(--grafite); width: 100%; }
+    .form input:focus, .form select:focus { border-color: var(--laranja); outline: 3px solid rgba(224,118,27,.28); outline-offset: 0; }
+    .form .botao { width: 100%; margin-top: 6px; }
+    .form-aviso { font-size: .9rem; color: var(--texto-2); margin: 0; }
+    .form-aviso.erro { color: #B42318; }
+    .recomeca { margin-top: 28px; display: inline-flex; align-items: center; gap: 10px; color: #F7B57A; font-weight: 600; text-decoration: none; }
+    .recomeca img { width: 28px; height: 28px; }
+    @media (max-width: 860px) { .interesse .faixa { grid-template-columns: 1fr; gap: 36px; } .form { padding: 24px 20px; } }
+
+    .rodape { padding: 32px 0 40px; color: var(--texto-2); font-size: .95rem; }
+    .rodape .faixa { display: flex; flex-wrap: wrap; gap: 16px 32px; align-items: center; justify-content: space-between; }
+    .rodape img { height: 28px; width: auto; }
+
+    @media (max-width: 600px) {
+      body { font-size: 17px; }
+      .faixa { padding: 0 16px; }
+      .secao { padding: 72px 0; }
+      .abertura { padding: 56px 0 72px; }
+      .abertura-acoes .botao { flex: 1 1 100%; }
+    }
+  </style>
+</head>
+<body>
+  <a class="pular" href="#conteudo">Pular para o conteúdo</a>
+
+  <header class="topo" id="topo">
+    <div class="faixa">
+      <a class="topo-logo" href="#topo" aria-label="LoopiServ, início">
+        <img class="tl-simbolo" src="assets/simbolo.svg" alt="" width="40" height="40">
+        <span class="tl-nome nome-marca">Loopi<span>Serv</span></span>
+      </a>
+      <nav aria-label="Seções">
+        <a href="#como-funciona">Como funciona</a>
+        <a href="#para-quem">Para quem</a>
+        <a href="#perguntas">Perguntas</a>
+      </nav>
+      <span class="espaco"></span>
+      <a class="botao botao-principal" href="#interesse">Quero testar</a>
+    </div>
+  </header>
+
+  <!-- Um único elemento de logo, que vai do centro da abertura até o canto do topo ao rolar -->
+  <div class="logo-voo" id="logo-voo" aria-hidden="true">
+    <img class="lv-simbolo" src="assets/simbolo.svg" alt="" width="168" height="168">
+    <span class="lv-nome nome-marca">Loopi<span>Serv</span></span>
+  </div>
+
+  <main id="conteudo">
+    <section class="intro" aria-labelledby="titulo">
+      <div class="faixa">
+        <div class="logo-grande" aria-hidden="true">
+          <img class="lg-simbolo" src="assets/simbolo.svg" alt="" width="168" height="168">
+          <span class="lg-nome nome-marca">Loopi<span>Serv</span></span>
+        </div>
+        <h1 id="titulo">O ciclo completo do seu serviço em um único sistema.</h1>
+        <p class="lead">Orçamento, aprovação, agenda, atendimento em campo, comprovante e pós-venda pelo WhatsApp, para o cliente voltar na hora certa.</p>
+        <div class="abertura-acoes">
+          <a class="botao botao-principal" href="#interesse">Quero uma demonstração</a>
+          <a class="botao botao-linha" href="#como-funciona">Ver como funciona</a>
+        </div>
+        <a class="rolar" href="#ciclo">Role para ver o ciclo
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg>
+        </a>
+      </div>
+    </section>
+
+    <section class="abertura" id="ciclo" aria-labelledby="t-ciclo">
+      <div class="faixa">
+        <div>
+          <h2 id="t-ciclo">Do orçamento ao pós-venda, num caminho só</h2>
+          <p class="lead">O LoopiServ organiza a empresa de serviço etapa por etapa e lembra o cliente de voltar pelo WhatsApp na hora certa. Aí o ciclo recomeça.</p>
+          <p class="abertura-nota">Funciona no navegador, no computador, no tablet e no celular. Não precisa instalar nada.</p>
+        </div>
+
+        <div class="ciclo" id="ciclo-a" aria-hidden="true">
+          <svg class="anel" viewBox="0 0 880 640" role="presentation">
+            <circle class="tracejado" cx="440" cy="320" r="232"/>
+            <circle class="fundo" cx="440" cy="320" r="183"/>
+            <circle class="trilho" cx="440" cy="320" r="190"/>
+            <circle class="progresso" cx="440" cy="320" r="190" transform="rotate(-90 440 320)"/>
+          </svg>
+          <div class="ciclo-centro">
+            <img src="assets/simbolo.svg" alt="" width="64" height="64">
+            <strong>O cliente volta</strong>
+            <span>e o ciclo recomeça</span>
+          </div>
+          <div class="etapa" style="left:50%; top:20.31%">
+            <span class="rotulo cima"><strong>Orçamento</strong><span>com link</span></span>
+            <span class="bola"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg></span>
+          </div>
+          <div class="etapa" style="left:68.7%; top:35.16%">
+            <span class="rotulo dir"><strong>Cliente aprova</strong><span>pelo celular</span></span>
+            <span class="bola"><svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="m9.5 12 2 2 3.5-4"/></svg></span>
+          </div>
+          <div class="etapa" style="left:68.7%; top:64.84%">
+            <span class="rotulo dir"><strong>Agenda</strong><span>e equipe</span></span>
+            <span class="bola"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg></span>
+          </div>
+          <div class="etapa" style="left:50%; top:79.69%">
+            <span class="rotulo baixo"><strong>Atendimento</strong><span>em campo</span></span>
+            <span class="bola"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94z"/></svg></span>
+          </div>
+          <div class="etapa" style="left:31.3%; top:64.84%">
+            <span class="rotulo esq"><strong>Comprovante</strong><span>assinado</span></span>
+            <span class="bola"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></span>
+          </div>
+          <div class="etapa" style="left:31.3%; top:35.16%">
+            <span class="rotulo esq"><strong>Pós-venda</strong><span>no WhatsApp</span></span>
+            <span class="bola"><svg viewBox="0 0 24 24"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z"/></svg></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="secao secao-nevoa" id="como-funciona" aria-labelledby="t-como">
+      <div class="faixa">
+        <h2 id="t-como">Um caminho só, do primeiro contato ao retorno</h2>
+        <p class="lead">Cada etapa alimenta a próxima. Ninguém precisa redigitar dados nem lembrar de mandar mensagem.</p>
+        <ol class="passos">
+          <li>
+            <h3>Orçamento</h3>
+            <p>Monte a proposta com os serviços da sua tabela, desconto e total. Mande pelo WhatsApp com um link.</p>
+            <span class="quem">Gestão</span>
+          </li>
+          <li>
+            <h3>O cliente aprova pelo link</h3>
+            <p>Ele abre a proposta no celular, sem login, vê os itens e aprova. O sistema marca na hora.</p>
+            <span class="quem">Cliente</span>
+          </li>
+          <li>
+            <h3>Agenda e equipe</h3>
+            <p>Escolha data, endereço, técnicos e, quando o ramo usa, equipamentos. Cada técnico vê só os próprios serviços.</p>
+            <span class="quem">Gestão</span>
+          </li>
+          <li>
+            <h3>Atendimento em campo</h3>
+            <p>O técnico abre o endereço no mapa, avisa que está a caminho, conclui com relatório e registra o pagamento.</p>
+            <span class="quem">Equipe de campo</span>
+          </li>
+          <li>
+            <h3>Comprovante assinado</h3>
+            <p>Folha A4 com os dados da empresa e do cliente, os serviços e o relatório, pronta para imprimir ou salvar em PDF.</p>
+            <span class="quem">Equipe de campo</span>
+          </li>
+          <li>
+            <h3>Pós-venda automático</h3>
+            <p>Mensagem de satisfação dias depois e de retorno dias ou meses depois, no prazo de cada ramo (por exemplo, 6 meses para ar-condicionado e 1 mês para piscina), e a empresa pode mudar.</p>
+            <span class="quem">Sistema</span>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="secao" id="por-dentro" aria-labelledby="t-dentro">
+      <div class="faixa">
+        <h2 id="t-dentro">Veja o LoopiServ por dentro</h2>
+        <p class="lead">Telas reais do sistema, com dados de exemplo.</p>
+        <div class="telas">
+          <figure>
+            <div class="navegador"><div class="navegador-barra"><i></i><i></i><i></i><span>LoopiServ · Dashboard</span></div>
+              <img src="assets/telas/painel.webp" width="1600" height="1000" loading="lazy" alt="Painel da gestão com atendimentos de hoje, orçamentos pendentes, total de clientes e alertas de mensagens de pós-venda.">
+            </div>
+            <figcaption><strong>Painel da gestão.</strong> O dia da empresa num relance.</figcaption>
+          </figure>
+          <figure>
+            <div class="navegador"><div class="navegador-barra"><i></i><i></i><i></i><span>LoopiServ · Proposta</span></div>
+              <img src="assets/telas/orcamento.webp" width="1600" height="1000" loading="lazy" alt="Orçamento aberto com dois serviços, valores, cliente, local do serviço e o botão Enviar via WhatsApp.">
+            </div>
+            <figcaption><strong>Orçamento com itens.</strong> Pronto para enviar com link.</figcaption>
+          </figure>
+          <figure>
+            <div class="navegador"><div class="navegador-barra"><i></i><i></i><i></i><span>LoopiServ · Comprovante</span></div>
+              <img src="assets/telas/comprovante.webp" width="1600" height="1000" loading="lazy" alt="Comprovante de serviço em folha A4 com dados da empresa e do cliente, serviços realizados, total e espaço para assinaturas.">
+            </div>
+            <figcaption><strong>Comprovante A4.</strong> Para imprimir ou salvar em PDF.</figcaption>
+          </figure>
+          <figure>
+            <div class="navegador"><div class="navegador-barra"><i></i><i></i><i></i><span>LoopiServ · Notificações</span></div>
+              <img src="assets/telas/pos-venda.webp" width="1600" height="1000" loading="lazy" alt="Lista de mensagens de pós-venda agendadas, de satisfação e de recorrência, com data programada e botão Enviar via WhatsApp.">
+            </div>
+            <figcaption><strong>Pós-venda agendado.</strong> Satisfação e retorno no dia certo.</figcaption>
+          </figure>
+        </div>
+        <div class="celulares">
+          <figure>
+            <div class="celular"><img src="assets/telas/proposta.webp" width="780" height="1688" loading="lazy" alt="Proposta aberta no celular do cliente, com os serviços, o total e o botão Aprovar proposta."></div>
+            <figcaption><strong>Proposta no celular.</strong> O cliente aprova sem login.</figcaption>
+          </figure>
+          <figure>
+            <div class="celular"><img src="assets/telas/campo.webp" width="780" height="1688" loading="lazy" alt="Área de campo do técnico no celular, com os atendimentos de hoje e dos próximos dias."></div>
+            <figcaption><strong>Área de campo.</strong> O técnico vê só os próprios atendimentos.</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <section class="secao secao-nevoa" aria-labelledby="t-conversa">
+      <div class="faixa conversa-grade">
+        <div>
+          <h2 id="t-conversa">O cliente volta sem você precisar lembrar</h2>
+          <p class="lead">Quando o serviço termina, o LoopiServ agenda as mensagens certas. O retorno sai dias ou meses depois, no prazo de cada ramo (por exemplo, 6 meses para ar-condicionado e 1 mês para piscina), e a empresa pode mudar o texto e o prazo.</p>
+          <ul class="conversa-legenda">
+            <li><strong>No dia</strong><span>Proposta com link para aprovar</span></li>
+            <li><strong>2 dias depois</strong><span>Pergunta se ficou tudo certo, enquanto o serviço está fresco na memória</span></li>
+            <li><strong>6 meses depois</strong><span>Lembra a manutenção, que vira um novo orçamento</span></li>
+          </ul>
+        </div>
+        <div class="conversa" role="img" aria-label="Exemplo de conversa no WhatsApp: proposta, mensagem de satisfação dois dias depois e convite para nova manutenção seis meses depois, que o cliente aceita.">
+          <div class="conversa-cab">
+            <img src="assets/simbolo.svg" alt="">
+            <div><strong>Clima Bom Refrigeração</strong><small>conta comercial</small></div>
+          </div>
+          <div class="quando"><span>12 de março</span></div>
+          <div class="bolha bolha-empresa">Oi, Juliana! Segue a proposta da limpeza dos 2 splits: R$ 360,00.<span class="link">loopiserv.com.br/p/7f3k…</span></div>
+          <div class="bolha bolha-cliente">Aprovei agora 👍</div>
+          <div class="quando"><span>14 de março</span></div>
+          <div class="bolha bolha-empresa">Oi, Juliana! Aqui é da Clima Bom. Ficou tudo certo com a limpeza dos aparelhos?</div>
+          <div class="bolha bolha-cliente">Ficou ótimo, gelando bem!</div>
+          <div class="quando"><span>10 de setembro</span></div>
+          <div class="bolha bolha-empresa">Oi, Juliana! Já faz 6 meses da última limpeza. Quer agendar a manutenção para esta semana?</div>
+          <div class="bolha bolha-cliente">Quero sim, pode ser sexta?</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="secao secao-escura" aria-labelledby="t-lados">
+      <div class="faixa">
+        <h2 id="t-lados">Duas áreas, cada uma com o que precisa</h2>
+        <p class="lead">Quem gerencia vê a operação inteira. Quem executa vê só os próprios serviços, sem financeiro nem cadastros.</p>
+        <div class="lados">
+          <div class="lado">
+            <h3>Gestão</h3>
+            <p class="para">Para donos, administradores e gerentes</p>
+            <ul>
+              <li>Clientes, endereços e tabela de serviços</li>
+              <li>Orçamentos com link de aprovação</li>
+              <li>Agenda da equipe</li>
+              <li>Financeiro, relatórios e modelos de mensagem</li>
+            </ul>
+          </div>
+          <div class="lado">
+            <h3>Equipe de campo</h3>
+            <p class="para">Para técnicos, no celular ou no notebook</p>
+            <ul>
+              <li>Serviços de hoje e dos próximos dias</li>
+              <li>Endereço no mapa, ligar e avisar que está a caminho</li>
+              <li>Concluir com relatório e pagamento recebido</li>
+              <li>Comprovante para o cliente assinar</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="secao" id="para-quem" aria-labelledby="t-quem">
+      <div class="faixa">
+        <h2 id="t-quem">Feito para quem vai até o cliente</h2>
+        <p class="lead">Se o seu serviço precisa de visita e o cliente volta de tempos em tempos, o LoopiServ foi pensado para você.</p>
+        <ul class="segmentos">
+          <li>Higienização de estofados e tapetes <span>retorno semestral</span></li>
+          <li>Ar-condicionado e climatização <span>manutenção a cada 6 meses</span></li>
+          <li>Dedetização e controle de pragas <span>visita com garantia</span></li>
+          <li>Caixa d'água, fossa e desentupimento <span>prazo conhecido</span></li>
+          <li>Piscinas e jardinagem <span>visitas todo mês</span></li>
+          <li>Manutenção predial, elétrica e hidráulica <span>orçamento e comprovante</span></li>
+          <li>Energia solar e limpeza de placas <span>instalação e limpeza</span></li>
+          <li>Câmeras, alarmes e redes <span>instalação em campo</span></li>
+          <li>Suporte de TI presencial <span>atendimento no local do cliente</span></li>
+        </ul>
+        <p class="segmentos-nota">Cada empresa usa só as funcionalidades que fazem sentido para o seu ramo: campos do orçamento, equipamentos e mensagens prontas.</p>
+      </div>
+    </section>
+
+    <section class="secao secao-nevoa" id="quem-faz" aria-labelledby="t-quem-faz">
+      <div class="faixa">
+        <h2 id="t-quem-faz">Quem faz</h2>
+        <div class="pessoas">
+          <article class="pessoa">
+            <span class="avatar" aria-hidden="true">AB</span>
+            <div>
+              <h3>Ana Beatriz Reis Alves</h3>
+              <p class="papel">Fundadora e desenvolvedora</p>
+              <p>Responsável pelo produto e pelo desenvolvimento do LoopiServ.</p>
+            </div>
+          </article>
+          <article class="pessoa">
+            <span class="avatar" aria-hidden="true">TC</span>
+            <div>
+              <h3>Társio Ribeiro Cavalcante</h3>
+              <p class="papel">Cofundador</p>
+              <p>Doutor em Educação e Contemporaneidade (UNEB) e professor do IF Baiano.</p>
+            </div>
+          </article>
+        </div>
+        <p class="origem">O LoopiServ nasceu de um sistema de gestão feito para uma empresa real de higienização, premiado com 1º lugar na FEMMIC (Catu – BA), 2º lugar no V CEPEX e 3º lugar na FECEAP (Macapá – AP).</p>
+      </div>
+    </section>
+
+    <section class="secao" id="perguntas" aria-labelledby="t-perguntas">
+      <div class="faixa">
+        <h2 id="t-perguntas">Perguntas frequentes</h2>
+        <div class="perguntas">
+          <details>
+            <summary>Preciso instalar alguma coisa?</summary>
+            <p>Não. O LoopiServ abre no navegador. No celular, dá para adicionar à tela inicial e abrir como um aplicativo.</p>
+          </details>
+          <details>
+            <summary>As mensagens saem sozinhas pelo WhatsApp?</summary>
+            <p>O sistema prepara cada mensagem com o nome do cliente e o serviço feito, no dia certo. Você confere e envia com um toque pelo seu próprio WhatsApp, sem pagar nada por conversa.</p>
+          </details>
+          <details>
+            <summary>Posso escrever as minhas mensagens?</summary>
+            <p>Pode. Há sugestões prontas por tipo de negócio, e você cria os seus modelos com o nome do cliente, da empresa, o serviço e a data preenchidos automaticamente.</p>
+          </details>
+          <details>
+            <summary>Os técnicos veem o financeiro da empresa?</summary>
+            <p>Não. A Equipe de campo enxerga só os atendimentos em que está escalada: endereço, o que fazer, valor a receber e o comprovante.</p>
+          </details>
+          <details>
+            <summary>Os dados da minha empresa ficam separados das outras?</summary>
+            <p>Sim. Cada empresa só vê os próprios clientes, orçamentos e atendimentos. Os acessos são criados pela equipe LoopiServ.</p>
+          </details>
+          <details>
+            <summary>Quanto custa?</summary>
+            <p>Há três planos: Piloto, Básico e Pro. As primeiras empresas entram no programa piloto. Deixe seu contato e conversamos sobre as condições.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section class="secao secao-escura interesse" id="interesse" aria-labelledby="t-interesse">
+      <div class="faixa">
+        <div>
+          <h2 id="t-interesse">Quer ver o LoopiServ na sua empresa?</h2>
+          <p class="lead">Conte um pouco sobre o seu negócio. A gente mostra o sistema funcionando com os seus serviços.</p>
+          <a class="recomeca" href="#topo"><img src="assets/simbolo.svg" alt="">Voltar ao início do ciclo</a>
+        </div>
+        <form class="form" id="form-interesse" novalidate>
+          <label>Seu nome
+            <input name="nome" autocomplete="name" required maxlength="80">
+          </label>
+          <label>Empresa
+            <input name="empresa" autocomplete="organization" required maxlength="100">
+          </label>
+          <label>Tipo de serviço
+            <select name="segmento" required>
+              <option value="">Selecione</option>
+              <option>Ar-condicionado e climatização</option>
+              <option>Higienização e limpeza</option>
+              <option>Dedetização e controle de pragas</option>
+              <option>Piscinas e jardinagem</option>
+              <option>Manutenção predial, elétrica ou hidráulica</option>
+              <option>Energia solar</option>
+              <option>Câmeras, alarmes e redes</option>
+              <option>Suporte de TI</option>
+              <option>Outro</option>
+            </select>
+          </label>
+          <label>Quantas pessoas vão a campo?
+            <select name="equipe">
+              <option>Só eu</option>
+              <option>2 a 5</option>
+              <option>6 a 15</option>
+              <option>Mais de 15</option>
+            </select>
+          </label>
+          <button class="botao botao-principal" type="submit">Pedir demonstração</button>
+          <p class="form-aviso" id="form-aviso" aria-live="polite">Abrimos uma conversa com a equipe LoopiServ com esses dados.</p>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <footer class="rodape">
+    <div class="faixa">
+      <img src="assets/loopiserv-horizontal.svg" alt="LoopiServ" width="132" height="28">
+      <span>O ciclo completo do seu serviço em um único sistema.</span>
+      <span>© <span id="ano">2026</span> LoopiServ</span>
+    </div>
+  </footer>
+
+  <script src="config.js"></script>
+  <script>
+    document.getElementById("ano").textContent = new Date().getFullYear();
+    var semMovimento = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    // Logo da abertura: um só elemento fixo vai do centro até o canto do topo nos primeiros 300px de rolagem
+    (function () {
+      var raiz = document.documentElement, topo = document.getElementById("topo");
+      if (semMovimento) { raiz.classList.add("sem-movimento"); topo.classList.add("pronto"); return; }
+      raiz.classList.add("voo");
+      var DIST = 300, voo = document.getElementById("logo-voo"), medidas = null, pedido = false;
+      // Cada parte (símbolo e nome) tem o lugar de origem (abertura) e o de destino (topo)
+      var partes = [["lg-simbolo", "tl-simbolo", "lv-simbolo"], ["lg-nome", "tl-nome", "lv-nome"]].map(function (n) {
+        return { o: document.querySelector("." + n[0]), t: document.querySelector("." + n[1]), v: voo.querySelector("." + n[2]) };
+      });
+      function medir() {
+        var y = window.scrollY;
+        medidas = partes.map(function (p) {
+          var o = p.o.getBoundingClientRect(), t = p.t.getBoundingClientRect();
+          return { ox: o.left, oy: o.top + y, ow: o.width, tx: t.left, ty: t.top, tw: t.width, vw: p.v.offsetWidth };
+        });
+        desenhar();
+      }
+      function desenhar() {
+        pedido = false;
+        if (!medidas) return;
+        var y = window.scrollY, p = Math.min(Math.max(y / DIST, 0), 1);
+        var e = p < .5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+        partes.forEach(function (pt, i) {
+          var m = medidas[i], oy = m.oy - y;
+          var x = m.ox + (m.tx - m.ox) * e, yy = oy + (m.ty - oy) * e, w = m.ow + (m.tw - m.ow) * e;
+          pt.v.style.transform = "translate(" + x + "px," + yy + "px) scale(" + (w / m.vw) + ")";
+        });
+        topo.classList.toggle("pronto", p >= 1);
+      }
+      function pedir() { if (!pedido) { pedido = true; requestAnimationFrame(desenhar); } }
+      window.addEventListener("scroll", pedir, { passive: true });
+      window.addEventListener("resize", medir);
+      window.addEventListener("load", medir);
+      if (document.fonts) document.fonts.ready.then(medir);
+      medir();
+    })();
+
+    // Ciclo A: avança uma etapa a cada 1,6s e pausa fora da tela ou com a aba oculta
+    (function () {
+      var ciclo = document.getElementById("ciclo-a");
+      var etapas = [].slice.call(ciclo.querySelectorAll(".etapa")), prog = ciclo.querySelector(".progresso");
+      var volta = 2 * Math.PI * 190;
+      prog.style.strokeDasharray = volta;
+      function marcar(atual) { // atual = -1: todas marcadas
+        etapas.forEach(function (el, i) {
+          el.classList.toggle("atual", i === atual);
+          el.classList.toggle("feita", atual < 0 || i < atual);
+        });
+        var f = atual < 0 || atual === 5 ? 1 : atual / 6; // na 6ª etapa o anel fecha
+        prog.style.strokeDashoffset = volta * (1 - f);
+        ciclo.setAttribute("data-etapa", atual);
+      }
+      if (semMovimento) { prog.style.transition = "none"; marcar(-1); return; }
+      var i = 0, timer = null, visivel = false;
+      prog.style.transition = "none"; marcar(0); prog.getBoundingClientRect(); prog.style.transition = "";
+      function passo() {
+        i = (i + 1) % 6;
+        if (i === 0) { prog.style.transition = "none"; prog.style.strokeDashoffset = volta; prog.getBoundingClientRect(); prog.style.transition = ""; }
+        marcar(i);
+      }
+      function atualizar() {
+        var rodar = visivel && !document.hidden;
+        if (rodar && !timer) timer = setInterval(passo, 1600);
+        if (!rodar && timer) { clearInterval(timer); timer = null; }
+      }
+      if ("IntersectionObserver" in window) {
+        new IntersectionObserver(function (es) { visivel = es[0].isIntersecting; atualizar(); }).observe(ciclo);
+      } else { visivel = true; atualizar(); }
+      document.addEventListener("visibilitychange", atualizar);
+    })();
+
+    // Formulário de interesse: abre o WhatsApp (ou o e-mail) da equipe com a mensagem pronta
+    (function () {
+      var cfg = window.LOOPISERV || {};
+      var form = document.getElementById("form-interesse"), aviso = document.getElementById("form-aviso");
+      if (!cfg.whatsapp && !cfg.email) aviso.textContent = "Contato em configuração. Volte em breve ou fale com a equipe LoopiServ no evento.";
+      form.addEventListener("submit", function (e) {
+        e.preventDefault();
+        var d = new FormData(form), nome = (d.get("nome") || "").trim(), empresa = (d.get("empresa") || "").trim(), segmento = d.get("segmento");
+        if (!nome || !empresa || !segmento) {
+          aviso.textContent = "Preencha nome, empresa e tipo de serviço para continuar."; aviso.classList.add("erro");
+          (!nome ? form.nome : !empresa ? form.empresa : form.segmento).focus(); return;
+        }
+        aviso.classList.remove("erro");
+        var texto = "Olá! Quero conhecer o LoopiServ.\nNome: " + nome + "\nEmpresa: " + empresa + "\nServiço: " + segmento + "\nEquipe em campo: " + d.get("equipe");
+        if (cfg.whatsapp) {
+          window.open("https://wa.me/" + String(cfg.whatsapp).replace(/\D/g, "") + "?text=" + encodeURIComponent(texto), "_blank", "noopener");
+          aviso.textContent = "Abrimos o WhatsApp com a sua mensagem. É só enviar.";
+        } else if (cfg.email) {
+          window.location.href = "mailto:" + cfg.email + "?subject=" + encodeURIComponent("Demonstração do LoopiServ") + "&body=" + encodeURIComponent(texto);
+          aviso.textContent = "Abrimos o seu e-mail com a mensagem pronta. É só enviar.";
+        } else {
+          aviso.textContent = "Contato em configuração. Fale com a equipe LoopiServ no evento.";
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
